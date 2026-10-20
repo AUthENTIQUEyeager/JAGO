@@ -17,5 +17,5 @@
     "noUnusedParameters": true,
     "noImplicitOverride": true
   },
-  "include": ["vite.config.ts", "tailwind.config.ts", "tests", "scripts"]
+  "include": ["vite.config.ts", "tailwind.config.ts", "tests", "scripts", "api"]
 }

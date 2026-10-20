@@ -26,6 +26,9 @@ export default defineConfig([
         'error',
         { checksVoidReturn: { attributes: false } },
       ],
+      // Règle expérimentale (React Compiler) : elle signale tout chargement asynchrone lancé dans un effet.
+      // Ces effets (fetch puis setState) sont voulus ; voir docs/DECISIONS.md D-024.
+      'react-hooks/set-state-in-effect': 'off',
       'no-console': ['error', { allow: ['warn', 'error'] }],
       // Sécurité (XSS) : jamais de HTML brut injecté. Les reçus sont construits en texte.
       'no-restricted-syntax': [
@@ -36,6 +39,10 @@ export default defineConfig([
         },
       ],
     },
+  },
+  {
+    files: ['scripts/**'],
+    rules: { 'no-console': 'off' }, // les scripts en ligne de commande affichent leurs résultats
   },
   {
     files: ['vite.config.ts', 'tailwind.config.ts', 'tests/**/*.ts'],

@@ -1,4 +1,4 @@
-# Modèle de menaces (version initiale, Phase 0)
+# Modèle de menaces
 
 Document vivant : chaque phase le complète avec ses contrôles et ses tests.
 
@@ -23,7 +23,6 @@ Document vivant : chaque phase le complète avec ses contrôles et ses tests.
 - **XSS** : règle ESLint bloquante sur `dangerouslySetInnerHTML`.
 - **Dépendances** : versions exactes, aucun script d’installation, `npm audit` documenté (voir `DECISIONS.md`).
 
-## Limites connues à ce stade
+## Limites connues
 
-- La CSP autorise provisoirement `https://*.supabase.co` (décision D-014).
-- Aucun test d’intrusion ni revue humaine indépendante n’a encore eu lieu.
+Voir `docs/SECURITY.md` (limites, éléments non vérifiés). La CSP autorise `https://*.supabase.co` tant que `scripts/set-csp-host.mjs` n’a pas été lancé avec l’adresse du projet (D-014). Aucun test d’intrusion humain n’a eu lieu.

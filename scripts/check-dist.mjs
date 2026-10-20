@@ -62,6 +62,37 @@ for (const file of walk(distDir)) {
   }
 }
 
+// ── PWA : manifeste complet, Service Worker sans cache d'API ni de données ──
+function checkPwa() {
+  const manifestPath = join(distDir, 'manifest.webmanifest')
+  const swPath = join(distDir, 'sw.js')
+  if (!existsSync(manifestPath) || !existsSync(swPath))
+    return problems.push('manifest.webmanifest ou sw.js absent de dist/')
+  const m = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  for (const [key, expected] of [
+    ['lang', 'fr'],
+    ['display', 'standalone'],
+    ['start_url', '/'],
+    ['scope', '/'],
+  ]) {
+    if (m[key] !== expected) problems.push(`manifest : « ${key} » devrait valoir ${expected}`)
+  }
+  const icons = Array.isArray(m.icons) ? m.icons : []
+  if (!icons.some((i) => i.sizes === '192x192')) problems.push('manifest : icône 192 absente')
+  if (!icons.some((i) => i.sizes === '512x512' && i.purpose === 'any'))
+    problems.push('manifest : icône 512 absente')
+  if (!icons.some((i) => i.purpose === 'maskable'))
+    problems.push('manifest : icône maskable absente')
+  const sw = readFileSync(swPath, 'utf8')
+  if (!/denylist/.test(sw) || !sw.includes('api'))
+    problems.push('sw.js : /api/ doit être exclu du repli de navigation')
+  if (/NetworkFirst|StaleWhileRevalidate|CacheFirst|supabase/i.test(sw))
+    problems.push('sw.js : aucun cache d’API ou de données n’est autorisé')
+  if (!readFileSync(join(distDir, 'index.html'), 'utf8').includes('rel="manifest"'))
+    problems.push('index.html : lien vers le manifeste absent')
+}
+checkPwa()
+
 if (problems.length > 0) {
   console.error('Contrôle de dist/ ÉCHOUÉ :')
   for (const problem of problems) console.error(` - ${problem}`)

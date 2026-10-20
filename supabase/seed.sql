@@ -1,0 +1,4 @@
+insert into public.platform_settings (id, support_phone, support_whatsapp, terms_version, terms_text)
+values (1, '', '', '1',
+'Conditions d’utilisation. 1) Vous utilisez ce logiciel pour gérer votre commerce. 2) Vos données (produits, ventes, clients) sont enregistrées sur votre appareil et envoyées sur des serveurs sécurisés. 3) L’administrateur de la plateforme peut consulter des statistiques d’activité de votre boutique ; un accès détaillé à vos ventes n’a lieu que pour une raison précise, et il est toujours enregistré. 4) L’administrateur peut suspendre l’accès à votre boutique ; vos données restent conservées et l’accès reprend dès la levée de la suspension. 5) Vous êtes responsable de la confidentialité de vos mots de passe. 6) Vous pouvez exporter toutes vos données à tout moment depuis les Paramètres.')
+on conflict (id) do nothing;

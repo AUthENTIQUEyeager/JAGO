@@ -1,0 +1,18 @@
+name: Sauvegarde chiffrée de la base
+# Sauvegarde logique hebdomadaire, chiffrée avec age, conservée hors de Supabase (artefact GitHub, 30 jours).
+# Secrets requis : SUPABASE_DB_URL (chaîne de connexion), BACKUP_AGE_RECIPIENT (clé publique age).
+on:
+  schedule: [{ cron: '0 3 * * 0' }]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client age
+      - run: pg_dump "$SUPABASE_DB_URL" --no-owner --schema=public | gzip | age -r "$BACKUP_AGE_RECIPIENT" > backup.sql.gz.age
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+      - uses: actions/upload-artifact@v4
+        with: { name: sauvegarde-chiffree, path: backup.sql.gz.age, retention-days: 30 }

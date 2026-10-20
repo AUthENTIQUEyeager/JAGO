@@ -6,6 +6,7 @@ import {
   Package,
   Receipt,
   Settings,
+  ShieldCheck,
   ShoppingCart,
   Truck,
   Users,
@@ -21,9 +22,11 @@ export interface NavItem {
   icon: LucideIcon
   /** Affiché dans la barre du bas sur téléphone. */
   mobile: boolean
+  /** Masqué pour le caissier (la vraie protection est dans la base de données). */
+  managerOnly?: boolean
 }
 
-/** Écrans de l’application. Un nouvel écran = une ligne ici + sa route dans routes.tsx. */
+/** Écrans de l'application. Un nouvel écran = une ligne ici + sa page dans routes.tsx. */
 export const navItems: readonly NavItem[] = [
   { id: 'cashier', path: '/', label: fr.nav.cashier, icon: ShoppingCart, mobile: true },
   { id: 'products', path: '/produits', label: fr.nav.products, icon: Package, mobile: true },
@@ -38,8 +41,37 @@ export const navItems: readonly NavItem[] = [
     mobile: false,
   },
   { id: 'sales', path: '/ventes', label: fr.nav.sales, icon: Receipt, mobile: false },
-  { id: 'suppliers', path: '/fournisseurs', label: fr.nav.suppliers, icon: Truck, mobile: false },
-  { id: 'expenses', path: '/depenses', label: fr.nav.expenses, icon: Wallet, mobile: false },
-  { id: 'reports', path: '/rapports', label: fr.nav.reports, icon: ChartColumn, mobile: false },
+  {
+    id: 'suppliers',
+    path: '/fournisseurs',
+    label: fr.nav.suppliers,
+    icon: Truck,
+    mobile: false,
+    managerOnly: true,
+  },
+  {
+    id: 'expenses',
+    path: '/depenses',
+    label: fr.nav.expenses,
+    icon: Wallet,
+    mobile: false,
+    managerOnly: true,
+  },
+  {
+    id: 'reports',
+    path: '/rapports',
+    label: fr.nav.reports,
+    icon: ChartColumn,
+    mobile: false,
+    managerOnly: true,
+  },
+  {
+    id: 'control',
+    path: '/controle',
+    label: fr.nav.control,
+    icon: ShieldCheck,
+    mobile: false,
+    managerOnly: true,
+  },
   { id: 'settings', path: '/parametres', label: fr.nav.settings, icon: Settings, mobile: false },
 ]

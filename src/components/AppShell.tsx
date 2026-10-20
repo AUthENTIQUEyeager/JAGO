@@ -1,15 +1,20 @@
 import { Suspense } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useOptionalAuth } from '@/auth/context'
 import { brand } from '@/config/brand'
 import { navItems } from '@/config/navigation'
 import { fr } from '@/i18n/fr'
 import { cn } from '@/lib/cn'
 import { PageSkeleton } from './PageSkeleton'
-
-const mobileItems = navItems.filter((item) => item.mobile)
+import { StatusBanners } from './StatusBanners'
+import { SyncIndicator } from './SyncIndicator'
 
 /** Cadre de l’application : barre du bas sur téléphone, menu latéral sur ordinateur. */
 export function AppShell() {
+  const auth = useOptionalAuth()
+  const cashier = auth?.state.status === 'ready' && auth.state.profile.role === 'cashier'
+  const visible = navItems.filter((item) => !(cashier && item.managerOnly))
+  const mobileItems = visible.filter((item) => item.mobile)
   return (
     <div className="min-h-dvh md:flex">
       <a
@@ -22,7 +27,7 @@ export function AppShell() {
       <aside className="hidden md:sticky md:top-0 md:flex md:h-dvh md:w-64 md:shrink-0 md:flex-col md:border-r md:border-neutral-200 md:bg-white">
         <div className="px-5 py-5 text-2xl font-bold text-brand-800">{brand.name}</div>
         <nav aria-label={fr.shell.mainNav} className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-          {navItems.map((item) => (
+          {visible.map((item) => (
             <NavLink
               key={item.id}
               to={item.path}
@@ -41,15 +46,22 @@ export function AppShell() {
         </nav>
       </aside>
 
-      <main
-        id="contenu"
-        tabIndex={-1}
-        className="min-w-0 flex-1 px-4 pb-28 pt-5 outline-none md:px-8 md:pb-8 md:pt-8"
-      >
-        <Suspense fallback={<PageSkeleton />}>
-          <Outlet />
-        </Suspense>
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-neutral-200 bg-white/95 px-4 py-2 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur">
+          <span className="text-lg font-bold text-brand-800 md:invisible">{brand.name}</span>
+          <SyncIndicator />
+        </header>
+        <StatusBanners />
+        <main
+          id="contenu"
+          tabIndex={-1}
+          className="min-w-0 flex-1 px-4 pb-28 pt-5 outline-none md:px-8 md:pb-8 md:pt-8"
+        >
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
 
       <nav
         aria-label={fr.shell.mainNav}

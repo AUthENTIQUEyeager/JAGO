@@ -1,0 +1,25 @@
+# Réglages pour le développement local (CLI Supabase). En production, appliquez les MÊMES réglages
+# dans le tableau de bord (voir docs/DEPLOY.md) : inscription publique OFF, anonymes OFF, MFA TOTP ON, Realtime OFF.
+project_id = "jago"
+
+[api]
+enabled = true
+schemas = ["public"]      # le schéma « private » n'est PAS exposé
+max_rows = 1000
+
+[auth]
+enable_signup = false
+enable_anonymous_sign_ins = false
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+minimum_password_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[realtime]
+enabled = false
+
+[storage]
+enabled = false

@@ -24,3 +24,31 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Impression du ticket : seul le reçu est imprimé, marges nulles, largeur fixe (58 ou 80 mm). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-print,
+  .receipt-print * {
+    visibility: visible;
+  }
+  .receipt-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    padding: 2mm;
+    background: #fff;
+    color: #000;
+    font:
+      11px/1.25 ui-monospace,
+      Menlo,
+      Consolas,
+      monospace;
+  }
+  @page {
+    margin: 0;
+  }
+}

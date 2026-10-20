@@ -1,6 +1,6 @@
 # Architecture de Jago
 
-> État : **Phase 0 terminée** (socle). Les sections marquées _(à venir)_ décrivent le plan suivi par les phases suivantes.
+> État : **toutes les phases (0 à 12) sont implémentées.** Voir `docs/SECURITY.md` pour ce qui reste à vérifier sur un vrai environnement.
 
 ## 1. Principes
 
@@ -35,30 +35,30 @@
 | `src/features/`                                 | Un dossier par domaine métier (Phase 5 et suivantes). `shell/` = pages de cadre  |
 | `src/i18n/fr.ts`                                | Dictionnaire central des textes visibles                                         |
 | `src/lib/`                                      | Fonctions pures (`cn` pour l’instant ; `money`, `phone`, `dates`… en Phase 3)    |
-| `src/db/`, `src/sync/`, `src/auth/`, `src/pwa/` | _(à venir)_ Phases 2, 3, 4, 10                                                   |
-| `api/`, `supabase/`                             | _(à venir)_ Phases 1 et 9                                                        |
+| `src/db/`, `src/sync/`, `src/auth/`, `src/pwa/` | Phases 2, 3, 4, 10                                                               |
+| `api/`, `supabase/`                             | Phases 1 et 9                                                                    |
 | `tests/`                                        | Tests qui lisent des fichiers du dépôt (ex. `vercel.json`)                       |
 | `scripts/`                                      | Outils : `check-dist.mjs` (contrôle du build)                                    |
 
-## 4. Flux d’écriture _(à venir, Phase 3)_
+## 4. Flux d’écriture
 
 Action utilisateur → repository (`salesRepo.createSale()`) → **une seule transaction Dexie** qui écrit : lignes métier + mouvements de stock + écritures de crédit + `stock_cache` + lignes d’`outbox`, dans l’ordre des dépendances (la vente avant ses lignes). Tout ou rien.
 
-## 5. Flux de sync _(à venir, Phase 4)_
+## 5. Flux de sync
 
 - **Push** : outbox traitée dans l’ordre de `seq`, lots ≤ 100 lignes de la même table, `upsert … onConflict: id` (idempotent ; `ignoreDuplicates` pour les tables en ajout seulement). Suppression de l’outbox **après** confirmation du serveur.
 - **Pull** : curseur `(server_updated_at, id)` par table, pages de 500, `bulkPut` idempotent.
 - **Erreurs** : réseau → `offline` + reprise ; RLS `42501` ou boutique `blocked` → `blocked`, pause totale, rien n’est supprimé ; `23505` = succès ; `23503` = réessayer puis `outbox_failed` ; 4xx permanent = `outbox_failed` visible.
 
-## 6. Règles de conflit _(à venir)_
+## 6. Règles de conflit
 
 « La dernière modification gagne » (`updated_at`), sans jamais écraser une ligne locale qui a une entrée en attente dans l’outbox. Les tables de mouvements sont en ajout seulement : pas de conflit possible.
 
-## 7. Authentification et blocage _(à venir, Phases 1, 2, 9)_
+## 7. Authentification et blocage
 
 Identifiant = numéro de téléphone → email technique `{id}@{domaine}`. Création des comptes uniquement côté serveur. Session conservée hors ligne ; **jamais de déconnexion sur simple erreur réseau**. Le blocage d’une boutique est appliqué par la RLS (le vrai verrou) ; l’écran « Accès suspendu » n’est qu’un affichage.
 
-## 8. PWA _(à venir, Phase 10)_
+## 8. PWA
 
 `vite-plugin-pwa` en `generateSW`, mise à jour sur demande (jamais en pleine vente), précache de l’app shell seulement, **aucun cache d’API** dans le Service Worker.
 
@@ -68,7 +68,15 @@ Voir `docs/THREAT_MODEL.md` et l’addendum sécurité. Déjà en place en Phase
 
 ## 10. Avancement
 
-| Phase | Contenu                          | État        |
-| ----- | -------------------------------- | ----------- |
-| 0     | Socle                            | ✅ Terminée |
-| 1–12  | Base, auth, local, sync, métier… | À faire     |
+| Phase | Contenu                                                                                                                | État |
+| ----- | ---------------------------------------------------------------------------------------------------------------------- | ---- |
+| 0     | Socle                                                                                                                  | ✅   |
+| 1     | Base de données, RLS, triggers (`supabase/`, tests pglite)                                                             | ✅   |
+| 2     | Authentification, session hors ligne, PIN, blocage (`src/auth`)                                                        | ✅   |
+| 3     | Couche locale Dexie, repositories, caches (`src/db`)                                                                   | ✅   |
+| 4     | Moteur de synchronisation (`src/sync`)                                                                                 | ✅   |
+| 5–8   | Produits, stock, caisse, ventes, clients, fournisseurs, dépenses, tableau de bord, rapports, contrôle (`src/features`) | ✅   |
+| 9     | Fonctions `/api`, interface super admin                                                                                | ✅   |
+| 10    | PWA (manifeste, icônes, Service Worker, mise à jour, installation)                                                     | ✅   |
+| 11    | Impression, WhatsApp, finitions                                                                                        | ✅   |
+| 12    | Documentation, CI, scripts de sécurité                                                                                 | ✅   |

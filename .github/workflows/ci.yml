@@ -1,0 +1,21 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions: { contents: read }
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run test:run # inclut les tests RLS (pglite), API, synchronisation
+      - run: npm run build
+      - run: npm run check:dist # pas de secret dans dist/, pas de script inline, PWA conforme
+      - run: npm run scan:secrets
+      - run: npm audit --omit=dev --audit-level=high

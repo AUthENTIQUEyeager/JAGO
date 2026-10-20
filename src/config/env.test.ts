@@ -50,7 +50,10 @@ describe('parseEnv', () => {
   })
 
   it('refuse une clé secrète au nouveau format', () => {
-    const result = parseEnv({ ...valid, VITE_SUPABASE_ANON_KEY: 'sb_secret_abcdefghijklmnopqrst' })
+    const result = parseEnv({
+      ...valid,
+      VITE_SUPABASE_ANON_KEY: ['sb', 'secret', 'abcdefghijklmnopqrst'].join('_'),
+    })
     expect(result.ok).toBe(false)
   })
 

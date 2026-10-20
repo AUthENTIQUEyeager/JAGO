@@ -1,11 +1,13 @@
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useOptionalAuth } from '@/auth/context'
 import { navItems } from '@/config/navigation'
 import { fr } from '@/i18n/fr'
 
-const secondaryItems = navItems.filter((item) => !item.mobile)
-
 export default function MorePage() {
+  const auth = useOptionalAuth()
+  const cashier = auth?.state.status === 'ready' && auth.state.profile.role === 'cashier'
+  const items = navItems.filter((item) => !item.mobile && !(cashier && item.managerOnly))
   return (
     <div className="space-y-5">
       <div className="space-y-1">
@@ -13,7 +15,7 @@ export default function MorePage() {
         <p className="text-base text-neutral-700">{fr.shell.moreHint}</p>
       </div>
       <ul className="divide-y divide-neutral-200 overflow-hidden rounded-2xl border border-neutral-300 bg-white">
-        {secondaryItems.map((item) => (
+        {items.map((item) => (
           <li key={item.id}>
             <Link
               to={item.path}

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { fr } from '@/i18n/fr'
 import { Button } from './Button'
 import { Modal } from './Modal'
@@ -10,6 +11,8 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   tone?: 'default' | 'danger'
   loading?: boolean
+  /** Contenu additionnel (ex. un champ « motif »). */
+  children?: ReactNode
   onConfirm: () => void
   onCancel: () => void
 }
@@ -23,6 +26,7 @@ export function ConfirmDialog({
   cancelLabel = fr.common.cancel,
   tone = 'default',
   loading = false,
+  children,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -48,6 +52,7 @@ export function ConfirmDialog({
       }
     >
       <p>{message}</p>
+      {children}
     </Modal>
   )
 }

@@ -17,27 +17,39 @@
     "test": "vitest",
     "test:run": "vitest run",
     "check:dist": "node scripts/check-dist.mjs",
-    "security:check": "npm run test:run && npm run build && npm run check:dist && npm audit --omit=dev --audit-level=high"
+    "security:check": "npm run typecheck && npm run lint && npm run test:run && npm run build && npm run check:dist && npm run scan:secrets && npm run check:csp && npm audit --omit=dev --audit-level=high",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "check:csp": "node scripts/check-csp.mjs",
+    "admin:create": "node --experimental-strip-types scripts/create-super-admin.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.118.0",
+    "dexie": "4.4.6",
+    "dexie-react-hooks": "4.4.0",
     "lucide-react": "1.59.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-is": "18.3.1",
     "react-router-dom": "6.30.6",
+    "recharts": "3.10.1",
+    "workbox-window": "7.4.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
     "@eslint/js": "10.0.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/node": "22.20.5",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
+    "@vercel/node": "24.0.3",
     "@vitejs/plugin-react": "6.1.2",
     "autoprefixer": "10.6.1",
     "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
+    "fake-indexeddb": "6.2.6",
     "globals": "17.13.0",
     "jsdom": "30.1.3",
     "postcss": "8.5.30",
@@ -46,6 +58,7 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.2",
     "vite": "8.3.4",
+    "vite-plugin-pwa": "2.0.0",
     "vitest": "5.0.5"
   }
 }
