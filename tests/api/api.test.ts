@@ -4,25 +4,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FakeAdmin } from './fakeAdmin'
 
 const h = vi.hoisted((): { admin: unknown } => ({ admin: null }))
-vi.mock('../../api/_lib/supabaseAdmin.js', () => ({
+vi.mock('../../server/_lib/supabaseAdmin.js', () => ({
   getAdmin: () => h.admin,
   authEmailDomain: () => 'shops.test',
 }))
 
-import auditLog from '../../api/admin/audit-log'
-import createShop from '../../api/admin/create-shop'
-import listShops from '../../api/admin/list-shops'
-import me from '../../api/admin/me'
-import resetPassword from '../../api/admin/reset-password'
-import setShopStatus from '../../api/admin/set-shop-status'
-import shopDetail from '../../api/admin/shop-detail'
-import updateSettings from '../../api/admin/update-settings'
-import viewShopData from '../../api/admin/view-shop-data'
-import createStaff from '../../api/shop/create-staff'
-import listStaff from '../../api/shop/list-staff'
-import resetStaffPassword from '../../api/shop/reset-staff-password'
-import setStaffActive from '../../api/shop/set-staff-active'
-import { scrub } from '../../api/_lib/audit'
+import auditLog from '../../server/admin/audit-log'
+import createShop from '../../server/admin/create-shop'
+import listShops from '../../server/admin/list-shops'
+import me from '../../server/admin/me'
+import resetPassword from '../../server/admin/reset-password'
+import setShopStatus from '../../server/admin/set-shop-status'
+import shopDetail from '../../server/admin/shop-detail'
+import updateSettings from '../../server/admin/update-settings'
+import viewShopData from '../../server/admin/view-shop-data'
+import createStaff from '../../server/shop/create-staff'
+import listStaff from '../../server/shop/list-staff'
+import resetStaffPassword from '../../server/shop/reset-staff-password'
+import setStaffActive from '../../server/shop/set-staff-active'
+import { scrub } from '../../server/_lib/audit'
 
 type Handler = (req: VercelRequest, res: VercelResponse) => Promise<void>
 const U = {

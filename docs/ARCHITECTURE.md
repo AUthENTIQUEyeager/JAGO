@@ -36,7 +36,7 @@
 | `src/i18n/fr.ts`                                | Dictionnaire central des textes visibles                                         |
 | `src/lib/`                                      | Fonctions pures (`cn` pour l’instant ; `money`, `phone`, `dates`… en Phase 3)    |
 | `src/db/`, `src/sync/`, `src/auth/`, `src/pwa/` | Phases 2, 3, 4, 10                                                               |
-| `api/`, `supabase/`                             | Phases 1 et 9                                                                    |
+| `api/`, `server/`, `supabase/`                  | Phases 1 et 9                                                                    |
 | `tests/`                                        | Tests qui lisent des fichiers du dépôt (ex. `vercel.json`)                       |
 | `scripts/`                                      | Outils : `check-dist.mjs` (contrôle du build)                                    |
 
