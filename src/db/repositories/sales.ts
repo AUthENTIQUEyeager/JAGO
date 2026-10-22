@@ -30,6 +30,18 @@ export interface SaleResult {
 }
 
 /**
+ * Coût unitaire mémorisé sur la ligne. Pour un montant libre (unités…), le « prix d'achat » du produit est un
+ * POURCENTAGE du montant vendu (95 = on paie 95 % de ce qu'on encaisse, soit 5 % de marge).
+ */
+export function lineCost(
+  line: { open?: boolean; unit_price: number },
+  cost: number | undefined,
+): number | null {
+  if (cost === undefined) return null
+  return line.open ? Math.round((line.unit_price * Math.min(100, cost)) / 100) : cost
+}
+
+/**
  * Crée une vente en UNE transaction : vente, lignes, paiements, mouvements de stock, écriture de crédit,
  * caches et outbox. Soit tout est écrit, soit rien. Le stock peut passer sous zéro (jamais bloquant).
  */
@@ -87,7 +99,7 @@ export async function createSale(ctx: Ctx, input: SaleInput): Promise<SaleResult
           qty: line.qty,
           unit_price: line.unit_price,
           list_price_snapshot: line.list_price,
-          cost_snapshot: costs[index]?.cost_price ?? null,
+          cost_snapshot: lineCost(line, costs[index]?.cost_price),
           line_discount: line.line_discount,
           line_total: line.line_total,
         },

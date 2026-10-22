@@ -49,6 +49,8 @@ export interface CartLine {
   list_price: number
   line_discount: number
   track_stock: boolean
+  /** Montant libre (unités, rédaction…) : le prix est saisi à chaque vente, il n'y a pas de prix « catalogue ». */
+  open?: boolean
 }
 export interface HeldCart {
   id: string

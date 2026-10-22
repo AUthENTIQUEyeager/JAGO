@@ -9,6 +9,7 @@ import type { Category, Product } from '@/db/schemas'
 import { saveProduct } from '@/db/repositories/products'
 import { useAction } from '@/hooks/useAction'
 import { parseMoney, parseQty } from '@/lib/money'
+import { isOpenAmount } from '../pos/cart'
 
 const optionalMoney = (v: string) => (v.trim() === '' ? null : parseMoney(v))
 
@@ -39,6 +40,7 @@ export function ProductForm({
     low_stock_threshold: product ? String(product.low_stock_threshold) : '0',
     opening_qty: '',
     is_active: product?.is_active ?? true,
+    open: product ? isOpenAmount(product) : false,
   })
   const set = <K extends keyof typeof f>(key: K, value: (typeof f)[K]) => {
     setF((prev) => ({ ...prev, [key]: value }))
@@ -46,8 +48,12 @@ export function ProductForm({
 
   async function submit() {
     const ok = await run(async () => {
-      const sale = parseMoney(f.sale_price)
+      const open = f.kind === 'service' && f.open
+      const sale = open ? 0 : parseMoney(f.sale_price)
       if (sale === null) throw new Error('Le prix de vente est invalide.')
+      const cost = optionalMoney(f.cost_price)
+      if (open && cost !== null && cost > 100)
+        throw new Error('Le coût d’achat d’un montant libre est un pourcentage (0 à 100).')
       await saveProduct(
         ctx,
         {
@@ -58,7 +64,7 @@ export function ProductForm({
           unit: f.unit,
           sale_price: sale,
           wholesale_price: optionalMoney(f.wholesale_price),
-          cost_price: optionalMoney(f.cost_price),
+          cost_price: cost,
           track_stock: f.track_stock,
           low_stock_threshold: parseQty(f.low_stock_threshold) ?? 0,
           opening_qty: product ? 0 : (parseQty(f.opening_qty) ?? 0),
@@ -104,24 +110,51 @@ export function ProductForm({
             { value: 'service', label: 'Service (sans stock)' },
           ]}
         />
-        <Input
-          label="Prix de vente (FCFA)"
-          inputMode="numeric"
-          value={f.sale_price}
-          onChange={(e) => {
-            set('sale_price', e.target.value)
-          }}
-        />
-        {manager ? (
+        {f.kind === 'service' ? (
+          <label className="flex min-h-11 items-center gap-3 text-base font-semibold">
+            <input
+              type="checkbox"
+              className="h-5 w-5"
+              checked={f.open}
+              onChange={(e) => {
+                set('open', e.target.checked)
+              }}
+            />
+            Montant libre (saisi à chaque vente : unités, rédaction…)
+          </label>
+        ) : null}
+        {f.kind === 'service' && f.open ? null : (
           <Input
-            label="Prix d’achat (FCFA)"
+            label="Prix de vente (FCFA)"
             inputMode="numeric"
-            value={f.cost_price}
+            value={f.sale_price}
             onChange={(e) => {
-              set('cost_price', e.target.value)
+              set('sale_price', e.target.value)
             }}
-            hint="Visible seulement par le propriétaire et le gérant."
           />
+        )}
+        {manager ? (
+          f.kind === 'service' && f.open ? (
+            <Input
+              label="Coût d’achat (% du montant vendu)"
+              inputMode="numeric"
+              value={f.cost_price}
+              onChange={(e) => {
+                set('cost_price', e.target.value)
+              }}
+              hint="Ex. 97 : vous payez 97 % de ce que vous encaissez, soit 3 % de bénéfice. Visible seulement par le propriétaire et le gérant."
+            />
+          ) : (
+            <Input
+              label="Prix d’achat (FCFA)"
+              inputMode="numeric"
+              value={f.cost_price}
+              onChange={(e) => {
+                set('cost_price', e.target.value)
+              }}
+              hint="Visible seulement par le propriétaire et le gérant."
+            />
+          )
         ) : null}
         <Input
           label="Prix de gros (facultatif)"

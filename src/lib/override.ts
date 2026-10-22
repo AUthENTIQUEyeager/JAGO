@@ -14,7 +14,10 @@ export function approvalReasons(
   const reasons: string[] = []
   const gross = lines.reduce((s, l) => s + lineTotal(l.qty, l.unit_price), 0)
   const discount = lines.reduce((s, l) => s + l.line_discount, 0) + globalDiscount
-  if (!settings.cashier_can_edit_price && lines.some((l) => l.unit_price !== l.list_price))
+  if (
+    !settings.cashier_can_edit_price &&
+    lines.some((l) => !l.open && l.unit_price !== l.list_price)
+  )
     reasons.push('Prix modifié')
   if (discount > 0) {
     if (!settings.cashier_can_discount) reasons.push('Remise non autorisée au caissier')

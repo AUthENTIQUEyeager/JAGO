@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { HEX_RE } from '@/config/theme'
 import { getMeta } from './meta'
 import type { JagoDb } from './dexie'
 
@@ -11,6 +12,13 @@ export const shopSettingsSchema = z.object({
   cashier_can_discount: z.boolean().default(true),
   discount_cap_pct: z.number().min(0).max(100).default(10),
   idle_minutes: z.number().int().min(1).max(120).default(5),
+  /** Couleurs choisies par la boutique (absent = couleurs d'origine). */
+  theme: z
+    .object({
+      primary: z.string().regex(HEX_RE).optional(),
+      accent: z.string().regex(HEX_RE).optional(),
+    })
+    .optional(),
   manager_pin: z.object({ salt: z.string(), hash: z.string(), iterations: z.number() }).optional(),
 })
 export type ShopSettings = z.infer<typeof shopSettingsSchema>

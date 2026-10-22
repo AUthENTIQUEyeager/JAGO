@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Camera, Minus, Pause, Plus, Search, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useReducer, useState } from 'react'
+import type { Product } from '@/db/schemas'
 import { setSaleInProgress } from '@/pwa/activity'
 import { Badge } from '@/components/Badge'
 import { Button } from '@/components/Button'
@@ -19,7 +20,8 @@ import { BarcodeScanner } from './BarcodeScanner'
 import { Checkout } from './Checkout'
 import { buildReceiptData } from './receiptData'
 import { ReceiptView } from './ReceiptView'
-import { cartReducer, EMPTY_CART } from './cart'
+import { cartReducer, EMPTY_CART, isOpenAmount } from './cart'
+import { OpenAmountModal } from './OpenAmountModal'
 
 export default function PosPage() {
   const { db, ctx, settings, shop } = useSession()
@@ -29,10 +31,11 @@ export default function PosPage() {
   const [paying, setPaying] = useState(false)
   const [heldOpen, setHeldOpen] = useState(false)
   const [done, setDone] = useState<SaleResult | null>(null)
+  const [openFor, setOpenFor] = useState<Product | null>(null)
   const { run } = useAction()
   const canEditPrice = isManager(ctx) || settings.cashier_can_edit_price
   const products = useLiveQuery(
-    () => searchProducts(db, q, { activeOnly: true, limit: 12 }),
+    () => searchProducts(db, q, { activeOnly: true, limit: 24 }),
     [db, q],
   )
   const stock = useLiveQuery(
@@ -48,16 +51,22 @@ export default function PosPage() {
     }
   }, [cart.lines.length, paying])
 
+  /** Ajoute un produit ; un service à montant libre demande d'abord le montant. */
+  const pick = useCallback((product: Product) => {
+    if (isOpenAmount(product)) setOpenFor(product)
+    else dispatch({ type: 'add', product })
+  }, [])
+
   const addByCode = useCallback(
     async (code: string) => {
       const product = await findByBarcode(db, code)
       if (product) {
-        dispatch({ type: 'add', product })
+        pick(product)
         setQ('')
         setScanning(false)
       }
     },
-    [db],
+    [db, pick],
   )
 
   if (done)
@@ -106,10 +115,10 @@ export default function PosPage() {
                 void (async () => {
                   const exact = await findByBarcode(db, q)
                   if (exact) {
-                    dispatch({ type: 'add', product: exact })
+                    pick(exact)
                     setQ('')
                   } else if (first && products?.length === 1) {
-                    dispatch({ type: 'add', product: first })
+                    pick(first)
                     setQ('')
                   }
                 })()
@@ -136,13 +145,15 @@ export default function PosPage() {
             key={p.id}
             type="button"
             onClick={() => {
-              dispatch({ type: 'add', product: p })
+              pick(p)
               setQ('')
             }}
             className="flex min-h-20 flex-col justify-between rounded-xl border border-neutral-300 bg-white p-3 text-left active:bg-brand-50"
           >
             <span className="line-clamp-2 text-base font-semibold text-neutral-900">{p.name}</span>
-            <span className="text-sm font-bold text-brand-800">{formatMoney(p.sale_price)}</span>
+            <span className="text-sm font-bold text-brand-800">
+              {isOpenAmount(p) ? 'Montant libre' : formatMoney(p.sale_price)}
+            </span>
           </button>
         ))}
       </div>
@@ -177,43 +188,47 @@ export default function PosPage() {
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="secondary"
-                  aria-label="Diminuer"
-                  onClick={() => {
-                    dispatch({
-                      type: 'qty',
-                      id: l.product_id,
-                      qty: Math.round((l.qty - 1) * 1000) / 1000,
-                    })
-                  }}
-                >
-                  <Minus className="h-5 w-5" aria-hidden="true" />
-                </Button>
-                <input
-                  aria-label={`Quantité de ${l.name}`}
-                  inputMode="decimal"
-                  defaultValue={formatQty(l.qty).replace(/\s/g, '')}
-                  key={`${l.product_id}-${l.qty}`}
-                  onBlur={(e) => {
-                    const v = parseQty(e.target.value)
-                    if (v) dispatch({ type: 'qty', id: l.product_id, qty: v })
-                  }}
-                  className="min-h-11 w-20 rounded-xl border border-neutral-400 text-center text-base"
-                />
-                <Button
-                  variant="secondary"
-                  aria-label="Augmenter"
-                  onClick={() => {
-                    dispatch({
-                      type: 'qty',
-                      id: l.product_id,
-                      qty: Math.round((l.qty + 1) * 1000) / 1000,
-                    })
-                  }}
-                >
-                  <Plus className="h-5 w-5" aria-hidden="true" />
-                </Button>
+                {l.open ? null : (
+                  <>
+                    <Button
+                      variant="secondary"
+                      aria-label="Diminuer"
+                      onClick={() => {
+                        dispatch({
+                          type: 'qty',
+                          id: l.product_id,
+                          qty: Math.round((l.qty - 1) * 1000) / 1000,
+                        })
+                      }}
+                    >
+                      <Minus className="h-5 w-5" aria-hidden="true" />
+                    </Button>
+                    <input
+                      aria-label={`Quantité de ${l.name}`}
+                      inputMode="decimal"
+                      defaultValue={formatQty(l.qty).replace(/\s/g, '')}
+                      key={`${l.product_id}-${l.qty}`}
+                      onBlur={(e) => {
+                        const v = parseQty(e.target.value)
+                        if (v) dispatch({ type: 'qty', id: l.product_id, qty: v })
+                      }}
+                      className="min-h-11 w-20 rounded-xl border border-neutral-400 text-center text-base"
+                    />
+                    <Button
+                      variant="secondary"
+                      aria-label="Augmenter"
+                      onClick={() => {
+                        dispatch({
+                          type: 'qty',
+                          id: l.product_id,
+                          qty: Math.round((l.qty + 1) * 1000) / 1000,
+                        })
+                      }}
+                    >
+                      <Plus className="h-5 w-5" aria-hidden="true" />
+                    </Button>
+                  </>
+                )}
                 <span className="ml-auto text-lg font-bold">
                   {formatMoney(
                     calc.lines.find((x) => x.product_id === l.product_id)?.line_total ?? 0,
@@ -221,7 +236,23 @@ export default function PosPage() {
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                {canEditPrice ? (
+                {l.open ? (
+                  <label className="flex items-center gap-1">
+                    Montant{' '}
+                    <input
+                      aria-label={`Montant de ${l.name}`}
+                      inputMode="numeric"
+                      defaultValue={l.unit_price}
+                      key={`m-${l.product_id}-${l.unit_price}`}
+                      onBlur={(e) => {
+                        const v = parseMoney(e.target.value)
+                        if (v !== null && v > 0)
+                          dispatch({ type: 'price', id: l.product_id, price: v })
+                      }}
+                      className="min-h-11 w-28 rounded-lg border border-neutral-400 px-2 text-right text-base"
+                    />
+                  </label>
+                ) : canEditPrice ? (
                   <label className="flex items-center gap-1">
                     Prix{' '}
                     <input
@@ -302,6 +333,18 @@ export default function PosPage() {
         </div>
       </div>
 
+      {openFor ? (
+        <OpenAmountModal
+          name={openFor.name}
+          onConfirm={(amount) => {
+            dispatch({ type: 'addOpen', product: openFor, amount })
+            setOpenFor(null)
+          }}
+          onClose={() => {
+            setOpenFor(null)
+          }}
+        />
+      ) : null}
       {scanning ? (
         <BarcodeScanner
           onDetect={(c) => void addByCode(c)}

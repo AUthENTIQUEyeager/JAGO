@@ -15,6 +15,7 @@ import { requestPersistence } from '@/pwa/storage'
 import { useSyncStatus } from '@/sync/context'
 import { SyncProvider } from '@/sync/SyncProvider'
 import { useEffect, type ReactNode } from 'react'
+import { applyTheme } from '@/config/applyTheme'
 import { AppRoutes } from './routes'
 
 const AdminApp = lazy(() => import('@/features/admin/AdminApp'))
@@ -32,6 +33,13 @@ function ReadyApp() {
   useEffect(() => {
     void requestPersistence()
   }, [])
+  const theme = session.settings.theme
+  useEffect(() => {
+    applyTheme(theme)
+    return () => {
+      applyTheme(null)
+    }
+  }, [theme])
   if (session.profile.must_change_password)
     return session.offline ? <NeedsNetworkScreen /> : <ChangePasswordPage />
   if (session.profile.terms_version !== session.platform.terms_version) return <TermsPage />

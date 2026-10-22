@@ -14,8 +14,10 @@ import type { Product } from '@/db/schemas'
 import { saveCategory, searchProducts, setProductActive } from '@/db/repositories/products'
 import { useAction } from '@/hooks/useAction'
 import { formatMoney, formatQty } from '@/lib/money'
+import { isOpenAmount } from '../pos/cart'
 import { ImportModal } from './ImportModal'
 import { ProductForm } from './ProductForm'
+import { TemplatesModal } from './TemplatesModal'
 
 export default function ProductsPage() {
   const { db, ctx } = useSession()
@@ -24,6 +26,7 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<Product | 'new' | null>(null)
   const [showCats, setShowCats] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
   const products = useLiveQuery(() => searchProducts(db, q), [db, q])
   const categories = useLiveQuery(() => db.categories.filter((c) => !c.deleted_at).toArray(), [db])
   const stock = useLiveQuery(
@@ -51,6 +54,14 @@ export default function ProductsPage() {
                 }}
               >
                 Catégories
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowTemplates(true)
+                }}
+              >
+                Modèles
               </Button>
               <Button
                 variant="secondary"
@@ -113,7 +124,7 @@ export default function ProductsPage() {
                 >
                   <p className="truncate text-base font-semibold text-neutral-900">{p.name}</p>
                   <p className="text-sm text-neutral-700">
-                    {formatMoney(p.sale_price)}
+                    {isOpenAmount(p) ? 'Montant libre' : formatMoney(p.sale_price)}
                     {p.track_stock ? ` · ${formatQty(qty)} ${p.unit}` : ' · service'}
                   </p>
                 </button>
@@ -157,6 +168,13 @@ export default function ProductsPage() {
         <ImportModal
           onClose={() => {
             setShowImport(false)
+          }}
+        />
+      ) : null}
+      {showTemplates ? (
+        <TemplatesModal
+          onClose={() => {
+            setShowTemplates(false)
           }}
         />
       ) : null}

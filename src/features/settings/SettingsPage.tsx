@@ -13,6 +13,9 @@ import { useLock } from '@/auth/lock-context'
 import { createPinRecord, validatePinFormat } from '@/auth/pin'
 import { isManager } from '@/db/ctx'
 import { exportBackup, exportCsvFiles, exportUnsent } from '@/db/backup'
+import { applyTheme } from '@/config/applyTheme'
+import { brand } from '@/config/brand'
+import { ACCENT_PRESETS, PRIMARY_PRESETS } from '@/config/theme'
 import { fr } from '@/i18n/fr'
 import { formatDateTime } from '@/lib/dates'
 import { downloadText } from '@/lib/download'
@@ -83,6 +86,61 @@ export default function SettingsPage() {
   )
 }
 
+function ColorPicker({
+  label,
+  presets,
+  defaultHex,
+  value,
+  onChange,
+}: {
+  label: string
+  defaultHex: string
+  presets: ReadonlyArray<{ name: string; hex: string | null }>
+  value: string
+  onChange: (hex: string) => void
+}) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-base font-semibold">{label}</legend>
+      <div className="flex flex-wrap items-center gap-2">
+        {presets.map((p) => {
+          const selected = (p.hex ?? '') === value
+          return (
+            <button
+              key={p.name}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => {
+                onChange(p.hex ?? '')
+              }}
+              className={`flex min-h-11 items-center gap-2 rounded-xl border-2 px-3 text-base ${selected ? 'border-neutral-900 font-bold' : 'border-neutral-300'}`}
+            >
+              <span
+                aria-hidden="true"
+                className="h-5 w-5 rounded-full border border-neutral-400"
+                style={{ backgroundColor: p.hex ?? defaultHex }}
+              />
+              {p.name}
+            </button>
+          )
+        })}
+        <label className="flex min-h-11 items-center gap-2 text-base">
+          Autre
+          <input
+            type="color"
+            aria-label={`${label} personnalisée`}
+            value={value || defaultHex}
+            onChange={(e) => {
+              onChange(e.target.value)
+            }}
+            className="h-11 w-14 rounded-lg border border-neutral-400 bg-white p-1"
+          />
+        </label>
+      </div>
+    </fieldset>
+  )
+}
+
 function ShopTab() {
   const { supabase, refresh } = useAuth()
   const { shop, settings } = useSession()
@@ -99,6 +157,20 @@ function ShopTab() {
     discount: settings.cashier_can_discount,
     managerPin: '',
   })
+  const [colors, setColors] = useState({
+    primary: settings.theme?.primary ?? '',
+    accent: settings.theme?.accent ?? '',
+  })
+  // Aperçu immédiat ; si on quitte sans enregistrer, les couleurs enregistrées reviennent.
+  useEffect(() => {
+    applyTheme({ primary: colors.primary || undefined, accent: colors.accent || undefined })
+  }, [colors])
+  useEffect(
+    () => () => {
+      applyTheme(settings.theme)
+    },
+    [settings.theme],
+  )
   const [busy, setBusy] = useState(false)
   async function save() {
     setBusy(true)
@@ -120,6 +192,14 @@ function ShopTab() {
       cashier_can_discount: f.discount,
       discount_cap_pct: Math.min(100, Math.max(0, Number(f.cap) || 0)),
       idle_minutes: Math.min(120, Math.max(1, Math.round(Number(f.idle) || 5))),
+      ...(colors.primary || colors.accent
+        ? {
+            theme: {
+              ...(colors.primary ? { primary: colors.primary } : {}),
+              ...(colors.accent ? { accent: colors.accent } : {}),
+            },
+          }
+        : {}),
       ...(manager_pin ? { manager_pin } : {}),
     }
     const { error } = await supabase.rpc('update_shop_settings', {
@@ -176,6 +256,25 @@ function ShopTab() {
           { value: '58', label: '58 mm' },
           { value: '80', label: '80 mm' },
         ]}
+      />
+      <h2 className="pt-2 text-lg font-bold">Couleurs du logiciel</h2>
+      <ColorPicker
+        label="Couleur principale"
+        presets={PRIMARY_PRESETS}
+        defaultHex={brand.colors.primary[700]}
+        value={colors.primary}
+        onChange={(v) => {
+          setColors((c) => ({ ...c, primary: v }))
+        }}
+      />
+      <ColorPicker
+        label="Couleur d’accent"
+        presets={ACCENT_PRESETS}
+        defaultHex={brand.colors.accent[400]}
+        value={colors.accent}
+        onChange={(v) => {
+          setColors((c) => ({ ...c, accent: v }))
+        }}
       />
       <h2 className="pt-2 text-lg font-bold">Droits du caissier</h2>
       <label className="flex min-h-11 items-center gap-3 text-base font-semibold">
