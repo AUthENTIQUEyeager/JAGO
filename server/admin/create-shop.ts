@@ -15,6 +15,8 @@ export default defineHandler({
       email: z.string().trim().max(200).optional(),
       password: z.string().min(8).max(128),
       notes: z.string().trim().max(2000).optional(),
+      /** Demande d'inscription d'où vient ce compte : elle passe automatiquement à « créé ». */
+      signup_id: z.string().uuid().optional(),
     })
     .strict(),
   run: async ({ admin, userId }, input) => {
@@ -33,6 +35,13 @@ export default defineHandler({
     if (res.error || typeof shopId !== 'string') {
       await rollbackUser(admin, newUserId)
       throw new Error(res.error?.message ?? 'create_shop_failed')
+    }
+    if (input.signup_id) {
+      // Le compte existe déjà : un échec ici ne doit pas faire échouer la création (l'admin peut changer le statut à la main).
+      await admin
+        .from('signup_requests')
+        .update({ status: 'created', shop_id: shopId, handled_at: new Date().toISOString() })
+        .eq('id', input.signup_id)
     }
     await audit(admin, {
       userId,

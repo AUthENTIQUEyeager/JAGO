@@ -15,6 +15,7 @@ export class FakeAdmin {
     profiles: [],
     shops: [],
     audit_log: [],
+    signup_requests: [],
     platform_settings: [{ id: 1 }],
   }
   tokens = new Map<string, { id: string; email: string }>()
@@ -129,7 +130,7 @@ export class FakeAdmin {
 }
 
 class Query implements PromiseLike<{ data: unknown; error: DbError | null }> {
-  private op: 'select' | 'insert' | 'update' = 'select'
+  private op: 'select' | 'insert' | 'update' | 'delete' = 'select'
   private patch: Row = {}
   private filters: Array<[string, unknown]> = []
   private max = Infinity
@@ -151,6 +152,10 @@ class Query implements PromiseLike<{ data: unknown; error: DbError | null }> {
     this.patch = patch
     return this
   }
+  delete() {
+    this.op = 'delete'
+    return this
+  }
   eq(col: string, value: unknown) {
     this.filters.push([col, value])
     return this
@@ -170,10 +175,16 @@ class Query implements PromiseLike<{ data: unknown; error: DbError | null }> {
   private run(): { data: unknown; error: DbError | null } {
     const rows = this.db.tables[this.table] ?? (this.db.tables[this.table] = [])
     if (this.op === 'insert') {
-      rows.push({ ...this.patch })
+      // Réplique les valeurs par défaut SQL de signup_requests.
+      const defaults = this.table === 'signup_requests' ? { id: randomUUID(), status: 'new' } : {}
+      rows.push({ ...defaults, ...this.patch })
       return { data: null, error: null }
     }
     const hit = rows.filter((r) => this.filters.every(([c, v]) => r[c] === v))
+    if (this.op === 'delete') {
+      for (const r of hit) rows.splice(rows.indexOf(r), 1)
+      return { data: hit.map((r) => ({ ...r })), error: null }
+    }
     if (this.op === 'update') {
       for (const r of hit) {
         // Réplique le trigger SQL « dernier propriétaire ».

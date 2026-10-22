@@ -1,5 +1,5 @@
-import { lazy } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import {
   ChangePasswordPage,
   BlockedScreen,
@@ -11,7 +11,7 @@ import {
 import { useAuth, useSession } from '@/auth/context'
 import { LockProvider } from '@/auth/LockProvider'
 import { PageSkeleton } from '@/components/PageSkeleton'
-import { requestPersistence } from '@/pwa/storage'
+import { isStandalone, requestPersistence } from '@/pwa/storage'
 import { useSyncStatus } from '@/sync/context'
 import { SyncProvider } from '@/sync/SyncProvider'
 import { useEffect, type ReactNode } from 'react'
@@ -19,6 +19,7 @@ import { applyTheme } from '@/config/applyTheme'
 import { AppRoutes } from './routes'
 
 const AdminApp = lazy(() => import('@/features/admin/AdminApp'))
+const LandingPage = lazy(() => import('@/features/landing/LandingPage'))
 
 function BlockGate({ children }: { children: ReactNode }) {
   const session = useSession()
@@ -54,9 +55,41 @@ function ReadyApp() {
   )
 }
 
+/**
+ * Visiteur non connecté : la page d'accueil publique sur « / », la connexion sur « /connexion ».
+ * Tout autre lien (ex. /ventes) garde l'écran de connexion et revient à cette page après la connexion.
+ * L'application installée (écran d'accueil du téléphone) va directement à la connexion.
+ */
+function SignedOutRoutes() {
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          isStandalone() ? (
+            <Navigate to="/connexion" replace />
+          ) : (
+            <Suspense
+              fallback={
+                <div className="p-6">
+                  <PageSkeleton />
+                </div>
+              }
+            >
+              <LandingPage />
+            </Suspense>
+          )
+        }
+      />
+      <Route path="*" element={<LoginPage />} />
+    </Routes>
+  )
+}
+
 /** Barrière d'authentification : quel écran afficher selon l'état de la session. */
 export function Gate() {
   const { state } = useAuth()
+  const location = useLocation()
   switch (state.status) {
     case 'loading':
       return (
@@ -65,12 +98,13 @@ export function Gate() {
         </div>
       )
     case 'signedOut':
-      return <LoginPage />
+      return <SignedOutRoutes />
     case 'needsNetwork':
       return <NeedsNetworkScreen />
     case 'disabled':
       return <DisabledScreen />
     case 'admin':
+      if (location.pathname === '/connexion') return <Navigate to="/admin" replace />
       return (
         <Routes>
           <Route path="/admin/*" element={<AdminApp />} />
@@ -78,6 +112,7 @@ export function Gate() {
         </Routes>
       )
     case 'ready':
+      if (location.pathname === '/connexion') return <Navigate to="/" replace />
       return <ReadyApp />
   }
 }

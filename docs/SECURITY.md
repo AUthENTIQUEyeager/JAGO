@@ -73,3 +73,14 @@
 - [ ] Deux super admins, codes de récupération MFA hors ligne.
 - [ ] Plan Supabase/Vercel compatible **usage commercial** et sauvegardes.
 - [ ] Supervision externe de disponibilité de l’URL.
+
+## Page d’accueil publique et demandes d’inscription
+
+- **Accueil** : un visiteur non connecté voit la page d’accueil sur `/` ; la connexion est sur `/connexion`. L’application installée sur le téléphone ouvre directement la connexion.
+- **Une seule route publique** : `POST /api/public/signup`. Elle n’a aucun accès aux données des boutiques : elle ne fait qu’ajouter une ligne dans `signup_requests`.
+- **Défenses de cette route** : limite de 5 demandes par heure et par adresse IP, plafond global de 300 par jour, champ piège invisible contre les robots (réponse « ok » sans rien enregistrer), validation stricte (champs inconnus refusés, longueurs bornées, caractères de contrôle retirés), réponse identique si le numéro est déjà en attente (aucune fuite d’information), erreurs internes jamais détaillées. Une route publique sans limite de débit est refusée au démarrage.
+- **Table fermée** : `signup_requests` n’est lisible ni modifiable par aucun client (ni anonyme, ni connecté, même propriétaire ou admin) ; RLS forcée, aucun droit. Seules les fonctions serveur (clé secrète) y accèdent. Testé sur la vraie base (pglite).
+- **Lecture réservée au super admin avec MFA** (`admin/list-signups`, `admin/update-signup`) ; la suppression exige un code TOTP récent (`admin/delete-signup`). Toute modification est écrite dans le journal d’audit.
+- **Affichage** : les textes saisis par les visiteurs sont affichés comme du texte (jamais comme du HTML).
+- **Données personnelles** : nom, commerce, téléphone, e-mail facultatif. Supprimez les demandes traitées depuis l’écran « Demandes ».
+- **Reste à faire si le spam devient un problème** : ajouter un CAPTCHA (ex. Cloudflare Turnstile). Il demande d’autoriser son domaine dans la CSP de `vercel.json`.

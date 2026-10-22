@@ -1,5 +1,6 @@
 import { Eye, EyeOff, Phone, ShieldAlert } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { brand } from '@/config/brand'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
@@ -122,6 +123,9 @@ export function LoginPage() {
       <p className="text-sm text-neutral-700">
         Pas encore de compte ? Votre fournisseur crée votre accès et vous remet vos identifiants.
       </p>
+      <Link to="/" className="text-base font-semibold text-brand-800 underline">
+        Retour à l’accueil et demande de compte
+      </Link>
     </Frame>
   )
 }

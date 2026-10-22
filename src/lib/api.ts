@@ -40,3 +40,32 @@ export async function apiCall<T>(
     }
   }
 }
+
+/** Appel d'une route PUBLIQUE de /api (sans compte), par exemple la demande d'inscription. Réponses validées par zod. */
+export async function publicCall<T>(
+  path: string,
+  body: unknown,
+  schema: z.ZodType<T>,
+): Promise<ApiResult<T>> {
+  try {
+    const response = await fetch(`/api/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body ?? {}),
+    })
+    const parsed = envelope.safeParse(await response.json())
+    if (!parsed.success)
+      return { ok: false, code: 'bad_response', message: 'Réponse inattendue du serveur.' }
+    if (!parsed.data.ok) return { ok: false, ...parsed.data.error }
+    const data = schema.safeParse(parsed.data.data)
+    return data.success
+      ? { ok: true, data: data.data }
+      : { ok: false, code: 'bad_response', message: 'Réponse inattendue du serveur.' }
+  } catch {
+    return {
+      ok: false,
+      code: 'network',
+      message: 'Pas de connexion internet. Réessayez quand le réseau revient.',
+    }
+  }
+}

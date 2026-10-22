@@ -4,15 +4,15 @@ Logiciel de gestion de commerce (caisse, stock, crédits clients, dépenses, rap
 
 ## Ce que contient le dépôt
 
-| Dossier     | Contenu                                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| `src/`      | Application React (caisse, produits, stock, clients, dépenses, rapports, contrôle, paramètres, interface super admin) |
-| `api/`      | Points d’entrée Vercel : 2 fonctions seulement (`admin/[action]`, `shop/[action]`), limite du plan Hobby              |
-| `server/`   | Handlers serveur (administration, personnel) regroupés par ces points d’entrée                                        |
-| `supabase/` | Migrations SQL (schéma, sécurité RLS), `seed.sql`, `config.toml`                                                      |
-| `tests/`    | Tests de la base (RLS), de l’API et de la configuration                                                               |
-| `scripts/`  | Création du super admin, contrôles de sécurité, icônes                                                                |
-| `docs/`     | Architecture, décisions, déploiement, recette, sécurité, incidents, conformité                                        |
+| Dossier     | Contenu                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `src/`      | Application React (caisse, produits, stock, clients, dépenses, rapports, contrôle, paramètres, interface super admin)     |
+| `api/`      | Points d’entrée Vercel : 3 fonctions seulement (`admin/[action]`, `shop/[action]`, `public/signup`), limite du plan Hobby |
+| `server/`   | Handlers serveur (administration, personnel) regroupés par ces points d’entrée                                            |
+| `supabase/` | Migrations SQL (schéma, sécurité RLS), `seed.sql`, `config.toml`                                                          |
+| `tests/`    | Tests de la base (RLS), de l’API et de la configuration                                                                   |
+| `scripts/`  | Création du super admin, contrôles de sécurité, icônes                                                                    |
+| `docs/`     | Architecture, décisions, déploiement, recette, sécurité, incidents, conformité                                            |
 
 ## Prérequis
 

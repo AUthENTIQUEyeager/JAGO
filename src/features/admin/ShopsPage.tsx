@@ -158,16 +158,31 @@ export function ShopsPage() {
   )
 }
 
-function CreateShop({ onClose }: { onClose: () => void }) {
+export interface CreateShopInitial {
+  shop_name?: string
+  owner_name?: string
+  phone?: string
+  notes?: string
+  signup_id?: string
+}
+
+/** Création d'un compte boutique ; peut être pré-remplie depuis une demande d'inscription. */
+export function CreateShop({
+  onClose,
+  initial,
+}: {
+  onClose: () => void
+  initial?: CreateShopInitial
+}) {
   const { supabase } = useAuth()
   const toast = useToast()
   const [f, setF] = useState({
-    shop_name: '',
-    owner_name: '',
-    phone: '',
+    shop_name: initial?.shop_name ?? '',
+    owner_name: initial?.owner_name ?? '',
+    phone: initial?.phone ?? '',
     email: '',
     password: '',
-    notes: '',
+    notes: initial?.notes ?? '',
   })
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<{ identifier: string; password: string } | null>(null)
@@ -180,6 +195,7 @@ function CreateShop({ onClose }: { onClose: () => void }) {
       password: f.password,
       ...(f.email ? { email: f.email } : {}),
       ...(f.notes ? { notes: f.notes } : {}),
+      ...(initial?.signup_id ? { signup_id: initial.signup_id } : {}),
     }
     const res = await apiCall(
       supabase,

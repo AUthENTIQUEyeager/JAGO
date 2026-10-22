@@ -19,7 +19,8 @@ Durée : environ 1 heure. Vous aurez besoin d’un compte **GitHub**, **Supabase
 4. **Authentication → Sessions** : gardez la durée du jeton par défaut ; la rotation des jetons de rafraîchissement doit rester activée.
 5. **Database → Extensions** / **Realtime** : Realtime n’est pas utilisé, laissez-le désactivé. Aucun stockage de fichiers (Storage) n’est utilisé.
 6. **SQL Editor** : collez et exécutez, **dans cet ordre**, le contenu de :
-   `supabase/migrations/0001_init.sql` → `0002_functions.sql` → `0003_rls.sql` → `supabase/seed.sql`.
+   `supabase/migrations/0001_init.sql` → `0002_functions.sql` → `0003_rls.sql` → `0004_signup_requests.sql` → `supabase/seed.sql`.
+   (Projet déjà en ligne : exécutez seulement `0004_signup_requests.sql` pour activer les demandes d’inscription de la page d’accueil.)
    (Ou avec la CLI Supabase : `supabase link` puis `supabase db push`.)
 7. **Project Settings → API Keys** : notez l’**URL du projet**, la clé **publique** (anon / publishable) et la clé **secrète** (service_role). Ne partagez jamais la clé secrète.
 8. **Database → Advisors** : lancez le **Security Advisor** et le **Performance Advisor** ; corrigez chaque avertissement ou justifiez-le dans `docs/SECURITY.md`.

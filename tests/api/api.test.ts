@@ -11,6 +11,10 @@ vi.mock('../../server/_lib/supabaseAdmin.js', () => ({
 
 import auditLog from '../../server/admin/audit-log'
 import createShop from '../../server/admin/create-shop'
+import deleteSignup from '../../server/admin/delete-signup'
+import listSignups from '../../server/admin/list-signups'
+import updateSignup from '../../server/admin/update-signup'
+import signup from '../../server/public/signup'
 import listShops from '../../server/admin/list-shops'
 import me from '../../server/admin/me'
 import resetPassword from '../../server/admin/reset-password'
@@ -46,6 +50,9 @@ const ADMIN_ROUTES: Record<string, Handler> = {
   auditLog,
   updateSettings,
   viewShopData,
+  listSignups,
+  updateSignup,
+  deleteSignup,
 }
 const SHOP_ROUTES: Record<string, Handler> = {
   listStaff,
@@ -387,5 +394,146 @@ describe('réponses d’erreur', () => {
     expect(
       scrub({ password: 'x', api_key: 'y', token: 'z', shop: 'ok', phone: '+226 70 ** ** 56' }),
     ).toEqual({ shop: 'ok', phone: '+226 70 ** ** 56' })
+  })
+})
+
+describe('demandes d’inscription (page d’accueil publique)', () => {
+  const body = {
+    full_name: 'Awa Traoré',
+    shop_name: 'Boutique Awa',
+    phone: '70 12 34 56',
+    email: 'awa@example.com',
+    country: 'Burkina Faso',
+    city: 'Bobo-Dioulasso',
+    activity: 'units',
+    message: 'Je vends des unités.',
+    consent: true,
+  }
+  const rows = () => fake.tables.signup_requests ?? []
+
+  it('accepte une demande sans compte et l’enregistre proprement', async () => {
+    const r = await call(signup, { body })
+    expect([r.status, r.body.data]).toEqual([200, { received: true }])
+    expect(rows()).toHaveLength(1)
+    expect(rows()[0]).toMatchObject({
+      full_name: 'Awa Traoré',
+      phone: '70123456',
+      activity: 'units',
+    })
+  })
+
+  it('refuse la mauvaise méthode, les champs inconnus et les données invalides', async () => {
+    expect((await call(signup, { method: 'GET', body })).status).toBe(405)
+    for (const [i, bad] of [
+      { ...body, extra: 1 },
+      { ...body, phone: 'abc' },
+      { ...body, full_name: 'A' },
+      { ...body, activity: 'hacker' },
+      { ...body, email: 'pas-un-email' },
+      { ...body, consent: false },
+      { ...body, message: 'x'.repeat(1001) },
+    ].entries()) {
+      // Une adresse différente à chaque essai, pour ne pas déclencher la limite de débit.
+      const r = await call(signup, { body: bad, ip: `3.3.3.${i}` })
+      expect([r.status, r.body.error?.code]).toEqual([400, 'invalid_input'])
+    }
+    expect(rows()).toHaveLength(0)
+  })
+
+  it('un robot (champ piège rempli) reçoit un « ok » mais rien n’est enregistré', async () => {
+    const r = await call(signup, { body: { ...body, website: 'http://spam.example' } })
+    expect([r.status, r.body.data]).toEqual([200, { received: true }])
+    expect(rows()).toHaveLength(0)
+  })
+
+  it('même numéro déjà en attente : pas de doublon, même réponse', async () => {
+    await call(signup, { body })
+    const again = await call(signup, { body: { ...body, shop_name: 'Autre nom' }, ip: '2.2.2.2' })
+    expect([again.status, again.body.data]).toEqual([200, { received: true }])
+    expect(rows()).toHaveLength(1)
+  })
+
+  it('limite à 5 demandes par heure et par adresse IP', async () => {
+    for (let i = 0; i < 5; i++)
+      expect((await call(signup, { body: { ...body, phone: `7012345${i}` } })).status).toBe(200)
+    const sixth = await call(signup, { body: { ...body, phone: '70999999' } })
+    expect([sixth.status, sixth.body.error?.code]).toEqual([429, 'rate_limited'])
+    // Une autre adresse n'est pas touchée.
+    expect(
+      (await call(signup, { body: { ...body, phone: '70888888' }, ip: '9.9.9.9' })).status,
+    ).toBe(200)
+  })
+
+  it('plafond global quotidien', async () => {
+    fake.rateCounts.set('signup:global', 300)
+    const r = await call(signup, { body })
+    expect([r.status, r.body.error?.code]).toEqual([429, 'rate_limited'])
+  })
+
+  it('une erreur interne ne fuit aucun détail', async () => {
+    fake.explode = 'secret db detail'
+    const r = await call(signup, { body })
+    expect(r.status).toBe(500)
+    expect(JSON.stringify(r.body)).not.toContain('secret')
+  })
+
+  it('une route publique sans limite de débit ne peut pas être définie', async () => {
+    const { defineHandler } = await import('../../server/_lib/http')
+    const { z } = await import('zod')
+    expect(() =>
+      defineHandler({ auth: 'public', schema: z.object({}), run: () => Promise.resolve(1) }),
+    ).toThrow()
+  })
+
+  it('la lecture est réservée au super admin (MFA) et ne passe jamais par la route publique', async () => {
+    await call(signup, { body })
+    expect((await call(listSignups)).status).toBe(401)
+    const asOwner = fake.token({ id: U.ownerA }, { aal: 'aal2', totpAgeSec: 1 })
+    expect((await call(listSignups, { token: asOwner })).status).toBe(403)
+    const list = await call(listSignups, { token: adminToken() })
+    expect(list.status).toBe(200)
+    expect(list.body.data?.requests as unknown[]).toHaveLength(1)
+  })
+
+  it('l’admin change le statut, ajoute une note, supprime (code récent) ; tout est journalisé', async () => {
+    await call(signup, { body })
+    const sid = String(rows()[0]?.id)
+    const upd = await call(updateSignup, {
+      token: adminToken(),
+      body: { id: sid, status: 'contacted', admin_notes: 'Appelé' },
+    })
+    expect(upd.status).toBe(200)
+    expect(rows()[0]).toMatchObject({ status: 'contacted', admin_notes: 'Appelé' })
+    expect((await call(updateSignup, { token: adminToken(), body: { id: sid } })).status).toBe(400)
+    const missing = '50000000-0000-4000-8000-0000000000ff'
+    expect(
+      (await call(updateSignup, { token: adminToken(), body: { id: missing, status: 'new' } }))
+        .status,
+    ).toBe(404)
+    const stale = await call(deleteSignup, { token: adminToken(3600), body: { id: sid } })
+    expect([stale.status, stale.body.error?.code]).toEqual([403, 'reauth_required'])
+    expect((await call(deleteSignup, { token: adminToken(30), body: { id: sid } })).status).toBe(
+      200,
+    )
+    expect(rows()).toHaveLength(0)
+    const actions = (fake.tables.audit_log ?? []).map((a) => a.action)
+    expect(actions).toEqual(['update_signup', 'delete_signup'])
+  })
+
+  it('créer le compte depuis une demande la passe à « créé » et la relie à la boutique', async () => {
+    await call(signup, { body })
+    const sid = String(rows()[0]?.id)
+    const r = await call(createShop, {
+      token: adminToken(),
+      body: {
+        shop_name: 'Boutique Awa',
+        owner_name: 'Awa Traoré',
+        phone: '70123456',
+        password: 'Kd7-pomme-Zq',
+        signup_id: sid,
+      },
+    })
+    expect(r.status).toBe(200)
+    expect(rows()[0]).toMatchObject({ status: 'created', shop_id: r.body.data?.shop_id })
   })
 })

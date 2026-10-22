@@ -14,7 +14,7 @@ export class ApiError extends Error {
   }
 }
 
-export type AuthMode = 'user' | 'admin_aal1' | 'admin' | 'admin_recent_mfa' | 'owner'
+export type AuthMode = 'public' | 'user' | 'admin_aal1' | 'admin' | 'admin_recent_mfa' | 'owner'
 const MAX_BODY_BYTES = 20_000
 const RECENT_MFA_SECONDS = 300
 
@@ -78,6 +78,9 @@ function clientIp(req: VercelRequest): string {
  * réponses homogènes { ok, data } / { ok:false, error }, aucune fuite de détails internes.
  */
 export function defineHandler<S extends z.ZodType>(options: Options<S>) {
+  // Une route publique SANS limite de débit serait ouverte à l'abus : on refuse de la définir.
+  if (options.auth === 'public' && !options.rateLimit)
+    throw new Error('Une route publique doit définir rateLimit.')
   return async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
     const requestId = Math.random().toString(36).slice(2, 10)
     try {
@@ -85,26 +88,30 @@ export function defineHandler<S extends z.ZodType>(options: Options<S>) {
         throw new ApiError(405, 'method_not_allowed', 'Méthode non autorisée.')
       if (Number(req.headers['content-length'] ?? 0) > MAX_BODY_BYTES)
         throw new ApiError(413, 'too_large', 'Requête trop volumineuse.')
-      const auth = String(req.headers.authorization ?? '')
-      const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
-      if (!token) throw new ApiError(401, 'unauthenticated', 'Connexion requise.')
-
       const admin = getAdmin()
-      const { data, error } = await admin.auth.getUser(token)
-      if (error || !data.user)
-        throw new ApiError(401, 'unauthenticated', 'Session invalide. Reconnectez-vous.')
-      const user = data.user
-      const claims = readClaims(token)
+      // Route publique (page d'accueil) : aucun jeton ni compte ; le débit est limité par adresse IP (plus bas).
+      let user: { id: string; email?: string | undefined } | null = null
+      let claims: Claims = {}
+      if (options.auth !== 'public') {
+        const auth = String(req.headers.authorization ?? '')
+        const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+        if (!token) throw new ApiError(401, 'unauthenticated', 'Connexion requise.')
+        const { data, error } = await admin.auth.getUser(token)
+        if (error || !data.user)
+          throw new ApiError(401, 'unauthenticated', 'Session invalide. Reconnectez-vous.')
+        user = data.user
+        claims = readClaims(token)
+      }
       const ctx: ApiContext = {
         admin,
-        userId: user.id,
-        email: user.email ?? null,
+        userId: user?.id ?? '',
+        email: user?.email ?? null,
         shopId: null,
         requestId,
         ip: clientIp(req),
       }
 
-      if (options.auth.startsWith('admin')) {
+      if (options.auth.startsWith('admin') && user) {
         const row = await admin
           .from('platform_admins')
           .select('user_id')
@@ -121,7 +128,7 @@ export function defineHandler<S extends z.ZodType>(options: Options<S>) {
           if (Date.now() / 1000 - stamp > RECENT_MFA_SECONDS)
             throw new ApiError(403, 'reauth_required', 'Confirmez avec votre code à 6 chiffres.')
         }
-      } else if (options.auth === 'owner') {
+      } else if (options.auth === 'owner' && user) {
         const profile = await admin
           .from('profiles')
           .select('shop_id, role, is_active')
@@ -142,7 +149,7 @@ export function defineHandler<S extends z.ZodType>(options: Options<S>) {
       }
 
       if (options.rateLimit) {
-        const key = `${options.rateLimit.name}:${user.id}:${ctx.ip}`
+        const key = `${options.rateLimit.name}:${user?.id ?? 'public'}:${ctx.ip}`
         const hit = await admin.rpc('rate_limit_hit', {
           p_key: key,
           p_limit: options.rateLimit.limit,

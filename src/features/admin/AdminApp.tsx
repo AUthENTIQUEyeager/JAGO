@@ -1,4 +1,4 @@
-import { ScrollText, Settings, Store } from 'lucide-react'
+import { Inbox, ScrollText, Settings, Store } from 'lucide-react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { Button } from '@/components/Button'
 import { useAuth } from '@/auth/context'
@@ -9,9 +9,11 @@ import { MfaGate } from './MfaGate'
 import { PlatformPage } from './PlatformPage'
 import { ShopDetailPage } from './ShopDetailPage'
 import { ShopsPage } from './ShopsPage'
+import { SignupsPage } from './SignupsPage'
 
 const links = [
   { to: '/admin', label: 'Boutiques', icon: Store, end: true },
+  { to: '/admin/demandes', label: 'Demandes', icon: Inbox, end: false },
   { to: '/admin/journal', label: 'Journal d’audit', icon: ScrollText, end: false },
   { to: '/admin/plateforme', label: 'Plateforme', icon: Settings, end: false },
 ]
@@ -55,6 +57,7 @@ export default function AdminApp() {
           <Routes>
             <Route index element={<ShopsPage />} />
             <Route path="boutiques/:id" element={<ShopDetailPage />} />
+            <Route path="demandes" element={<SignupsPage />} />
             <Route path="journal" element={<AuditPage />} />
             <Route path="plateforme" element={<PlatformPage />} />
           </Routes>

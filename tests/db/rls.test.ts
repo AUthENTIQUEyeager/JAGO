@@ -35,6 +35,7 @@ describe('2. anon n’a accès à rien', () => {
       'platform_settings',
       'audit_log',
       'platform_admins',
+      'signup_requests',
     ]) {
       expect(await as(db, null, () => errorCode(q(`select * from public.${t}`)), 'anon'), t).toBe(
         '42501',
@@ -458,7 +459,12 @@ describe('autres contrôles de sécurité', () => {
     }
   })
   it('tables d’administration inaccessibles aux utilisateurs', async () => {
-    for (const t of ['public.audit_log', 'public.platform_admins', 'private.rate_limit_events']) {
+    for (const t of [
+      'public.audit_log',
+      'public.platform_admins',
+      'public.signup_requests',
+      'private.rate_limit_events',
+    ]) {
       expect(await as(db, ID.ownerA, () => errorCode(q(`select * from ${t}`))), t).toBe('42501')
     }
   })
@@ -582,5 +588,79 @@ describe('administration (clé service)', () => {
     expect(
       (await db.query<{ v: string | null }>('select private.verify_audit_chain() as v')).rows[0]?.v,
     ).not.toBeNull()
+  })
+})
+
+describe('demandes d’inscription : table fermée à tous les clients', () => {
+  it('ni lecture, ni écriture, ni suppression pour un utilisateur connecté (même propriétaire ou admin)', async () => {
+    for (const user of [ID.ownerA, ID.cashierA, ID.admin]) {
+      expect(
+        await as(db, user, () =>
+          errorCode(
+            q(
+              `insert into public.signup_requests (full_name, shop_name, phone) values ('Awa', 'Chez Awa', '70123456')`,
+            ),
+          ),
+        ),
+        `insert ${user}`,
+      ).toBe('42501')
+      expect(
+        await as(db, user, () =>
+          errorCode(q(`update public.signup_requests set status = 'created'`)),
+        ),
+      ).toBe('42501')
+      expect(await as(db, user, () => errorCode(q(`delete from public.signup_requests`)))).toBe(
+        '42501',
+      )
+    }
+  })
+  it('anon ne peut rien écrire non plus', async () => {
+    expect(
+      await as(
+        db,
+        null,
+        () =>
+          errorCode(
+            q(
+              `insert into public.signup_requests (full_name, shop_name, phone) values ('Awa', 'Chez Awa', '70123456')`,
+            ),
+          ),
+        'anon',
+      ),
+    ).toBe('42501')
+  })
+  it('le serveur (service_role) peut écrire, et les contraintes protègent les données', async () => {
+    const insert = (cols: string, vals: string) =>
+      q(`insert into public.signup_requests (${cols}) values (${vals})`)
+    await as(
+      db,
+      null,
+      async () => {
+        await insert('full_name, shop_name, phone', `'Awa', 'Chez Awa', '70123456'`)
+      },
+      'service_role',
+    )
+    expect(
+      await as(
+        db,
+        null,
+        () =>
+          errorCode(
+            insert(
+              'full_name, shop_name, phone, status',
+              `'Awa', 'Chez Awa', '70123456', 'hacked'`,
+            ),
+          ),
+        'service_role',
+      ),
+    ).toBe('23514')
+    expect(
+      await as(
+        db,
+        null,
+        () => errorCode(insert('full_name, shop_name, phone', `'A', 'Chez Awa', '70123456'`)),
+        'service_role',
+      ),
+    ).toBe('23514')
   })
 })
